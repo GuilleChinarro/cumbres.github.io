@@ -3,7 +3,7 @@ const APP = 'cumbres-app-v1';
 const TILES = 'cumbres-teselas-v1';
 const MAX_TILES = 4000;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
-const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod/.test(u);
+const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod|tiles\.mapterhorn\.com/.test(u);
 const isLib = (u) => /cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.(googleapis|gstatic)\.com/.test(u);
 
 self.addEventListener('install', (e) => {
