@@ -1,9 +1,9 @@
 /* Cuaderno de cumbres: la app abre sin conexión y guarda los mapas y el relieve que ya has visto. */
 const APP = 'cumbres-app-v1';
 const TILES = 'cumbres-teselas-v1';
-const MAX_TILES = 4000;
+const MAX_TILES = 6000;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
-const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod|tiles\.mapterhorn\.com/.test(u);
+const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod|tiles\.mapterhorn\.com|tile\.waymarkedtrails\.org/.test(u);
 const isLib = (u) => /cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.(googleapis|gstatic)\.com/.test(u);
 
 self.addEventListener('install', (e) => {
@@ -44,9 +44,10 @@ async function networkFirst(req) {
 }
 let trimming = false;
 async function tile(req) {
-  const c = await caches.open(TILES);
-  const hit = await c.match(req);
+  // Primero, cualquier caché: incluye las zonas guardadas para ir sin cobertura
+  const hit = await caches.match(req);
   if (hit) return hit;
+  const c = await caches.open(TILES);
   const res = await fetch(req);
   if (res.ok) {
     await c.put(req, res.clone());
