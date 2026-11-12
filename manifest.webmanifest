@@ -1,7 +1,7 @@
 {
   "name": "Cuaderno de cumbres",
   "short_name": "Cumbres",
-  "description": "Tus rutas de montaña, tus cumbres y el mapa del IGN con relieve 3D.",
+  "description": "Cuaderno de alta montaña y alpinismo: rutas, cumbres, condiciones, horarios y relieve 3D. Tus datos se quedan en tu dispositivo.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

@@ -1,9 +1,12 @@
 /* Cuaderno de cumbres: la app abre sin conexión y guarda los mapas y el relieve que ya has visto. */
-const APP = 'cumbres-app-v1';
+const APP = 'cumbres-app-v3';
 const TILES = 'cumbres-teselas-v1';
 const MAX_TILES = 6000;
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
-const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod|tiles\.mapterhorn\.com|tile\.waymarkedtrails\.org/.test(u);
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './css/app.css',
+  './vendor/maplibre-gl.js', './vendor/maplibre-gl.css',
+  ...['core', 'refdata', 'gpx', 'fit', 'track', 'detect', 'ingest', 'store', 'state', 'ui', 'alp', 'retos', 'map', 'offline', 'pois', 'planner', 'terrain', 'wx', 'boot'].map((n) => `./js/${n}.js`),
+  ...['peaks', 'sierras', 'base', 'glyphs'].map((n) => `./data/${n}.gz`)];
+const isTile = (u) => /tile\.openstreetmap\.org|ign\.es\/wmts|elevation-tiles-prod|tiles\.mapterhorn\.com|tile\.opentopomap\.org|tile\.waymarkedtrails\.org/.test(u);
 const isLib = (u) => /cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.(googleapis|gstatic)\.com/.test(u);
 
 self.addEventListener('install', (e) => {
