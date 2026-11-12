@@ -81,7 +81,7 @@ function emptyState() {
     <h2>Tu cuaderno está vacío</h2>
     <p>Arrastra aquí tus archivos GPX, uno o varios a la vez. Cada ruta se cruza con las cumbres de OpenStreetMap y verás cuáles subiste y por cuáles pasaste cerca.</p>
     <div class="dropzone">
-      <div class="row"><button class="btn primary" data-act="add-files" type="button">Añadir GPX</button><button class="btn" data-act="load-demo" type="button">Ver rutas de ejemplo</button></div>
+      <div class="row"><button class="btn primary" data-act="add-files" type="button">Añadir GPX o FIT</button><button class="btn" data-act="load-demo" type="button">Ver rutas de ejemplo</button></div>
       <span class="small muted">O suelta los archivos en cualquier parte de la ventana. Si ya tienes una exportación del cuaderno, impórtala desde Datos.</span>
     </div>
   </div>`;
@@ -127,7 +127,8 @@ function routeRow(r) {
     <div>
       <div class="r-top"><span class="r-name">${esc(r.name)}</span><span class="r-date">${fmt.date(r.date)}</span></div>
       <div class="r-mid">${statsInline(r)}${sparkSvg(r)}</div>
-      <div class="r-mid" style="margin-top:3px"><span class="chip">${esc(TYPE_LABEL[r.type] || r.type)}</span></div>
+      <div class="r-mid" style="margin-top:3px"><span class="chips">${isPlan(r) ? '<span class="chip plan">Proyecto</span>' : ''}<span class="chip">${esc(TYPE_LABEL[r.type] || r.type)}</span>${gradeLine(r) ? `<span class="grade">${esc(gradeLine(r))}</span>` : ''}${alpOf(r).outcome === 'retirada' ? '<span class="chip retreat">Retirada</span>' : ''}</span></div>
+      ${alpOf(r).via || (alpOf(r).team || []).length ? `<div class="small muted r-via">${esc([alpOf(r).via, (alpOf(r).team || []).length ? 'con ' + listJoin(alpOf(r).team) : ''].filter(Boolean).join(' · '))}</div>` : ''}
       ${peaksInline(r)}
     </div>
   </li>`;
@@ -239,7 +240,7 @@ function routeDetail(id) {
   const src = r.source || {};
   return `<div class="detail">
     <div class="d-head">
-      <button class="btn quiet small back" type="button" data-act="back">‹ ${S.ui.prev === 'mountains' ? 'Montañas' : S.ui.prev === 'reto' ? 'Reto' : S.ui.prev === 'retos' ? 'Retos' : 'Rutas'}</button>
+      <button class="btn quiet small back" type="button" data-act="back">‹ ${S.ui.prev === 'mountains' ? 'Montañas' : S.ui.prev === 'stats' ? 'Resumen' : S.ui.prev === 'reto' ? 'Reto' : S.ui.prev === 'retos' ? 'Retos' : 'Rutas'}</button>
       <input class="d-title" data-edit="name" value="${esc(r.name)}" aria-label="Nombre de la ruta" maxlength="200">
       <div class="d-meta">
         <label class="field"><span>Fecha</span><input type="date" data-edit="date" value="${dateVal}"></label>
@@ -262,13 +263,18 @@ function routeDetail(id) {
       <div class="row" style="margin-top:10px"><button class="btn small" type="button" data-act="add-peak" aria-expanded="${S.ui.addPeakOpen}">${S.ui.addPeakOpen ? 'Cerrar' : 'Añadir cumbre'}</button></div>
       ${addPeakPanel(r)}
     </div>
+    ${alpSections(r)}
+    <div id="schedBox">${scheduleSection(r)}</div>
+    ${terrainSection(r)}
+    ${wxSection(r)}
     <div class="sec row">
       <button class="btn small" type="button" data-act="fit-route">Ver en el mapa</button>
       ${MapCtl.kind === 'maplibre' ? '<button class="btn small" type="button" data-act="fly-route">Volar la ruta en 3D</button>' : ''}
       ${Offline.available() ? '<button class="btn small" type="button" data-act="offline-route">Guardar para ir sin cobertura</button>' : ''}
+      <button class="btn small" type="button" data-act="export-gpx">Exportar GPX</button>
       <button class="btn small danger" type="button" data-act="delete-route">Borrar ruta</button>
     </div>
-    <p class="sec small muted" style="margin:0">${src.kind === 'demo' ? 'Ruta de ejemplo inventada' : src.kind === 'gpx' || !src.kind ? 'Archivo GPX' : esc(src.kind)}${src.file && src.kind !== 'demo' ? ` ${esc(src.file)}` : ''}${r.created ? `, añadida el ${fmt.dateLong(r.created)}` : ''}.${routeSierras(r).length ? ` Sierra: ${esc(listJoin(routeSierras(r).slice(0, 3)))}.` : ''}</p>
+    <p class="sec small muted" style="margin:0">${src.kind === 'demo' ? 'Ruta de ejemplo inventada' : src.kind === 'gpx' || !src.kind ? 'Archivo GPX' : src.kind === 'fit' ? 'Archivo FIT' : esc(src.kind)}${src.file && src.kind !== 'demo' ? ` ${esc(src.file)}` : ''}${r.created ? `, añadida el ${fmt.dateLong(r.created)}` : ''}.${routeSierras(r).length ? ` Sierra: ${esc(listJoin(routeSierras(r).slice(0, 3)))}.` : ''}</p>
   </div>`;
 }
 function drawProfile(el, r) {
@@ -307,7 +313,8 @@ function drawProfile(el, r) {
     <g class="grid">${grid}</g>
     <path class="area" d="${d}L${X(total).toFixed(1)},${H - B}L${L},${H - B}Z"/>
     <path class="line" d="${d}"/>
-    ${marks}
+    ${((r.alp && r.alp.terrain && r.alp.terrain.segs) || []).map(([a, b]) => `<rect class="steep" x="${X(a).toFixed(1)}" y="${H - B - 3}" width="${Math.max(1.5, X(Math.min(b, total)) - X(a)).toFixed(1)}" height="3"><title>Ladera de más de 30°</title></rect>`).join('')}
+    ${marks}${((r.alp && r.alp.wps) || []).map((w) => `<g class="wpm ${w.kind}" transform="translate(${X(w.at).toFixed(1)},${(Y(eleAt(P, w.at)) - 7).toFixed(1)})"><title>${esc(w.name || WP_LABEL[w.kind])}</title><path d="M0-6 5 0 0 6-5 0z"/></g>`).join('')}
     <line class="cursor" x1="0" x2="0" y1="${T}" y2="${H - B}" visibility="hidden"/>
   </svg><div class="tip" hidden></div>`;
   const svg = el.querySelector('svg'), cur = svg.querySelector('.cursor'), tip = el.querySelector('.tip');
@@ -322,6 +329,9 @@ function drawProfile(el, r) {
     tip.style.left = clamp(cx, 50, W - 50) + 'px';
     tip.textContent = `${fmt.m(P.ele[i])}, km ${fmt.kmNum(P.cum[i] * scale)}`;
     MapCtl.setCursor(P.lat[i], P.lon[i]);
+    S.ui.profAt = P.cum[i];
+    const wb = document.getElementById('wpBtn');
+    if (wb) { wb.disabled = false; wb.textContent = `Marcar en km ${fmt.kmNum(P.cum[i] * scale)}`; }
   };
   const leave = () => { cur.setAttribute('visibility', 'hidden'); tip.hidden = true; MapCtl.setCursor(null); };
   el._showAt = (at) => {
@@ -375,6 +385,7 @@ function peakDetail(id) {
     </div>
     <div class="sec"><h3>Ascensiones <span class="muted">${climbs.length}</span></h3>${climbs.length ? miniRoutes(climbs, id) : '<p class="small muted" style="margin:0">Ninguna todavía.</p>'}</div>
     ${nears.length ? `<div class="sec"><h3>Pasé cerca <span class="muted">${nears.length}</span></h3>${miniRoutes(nears, id, true)}</div>` : ''}
+    <div class="sec"><h3>Meteo en la cumbre</h3>${wxBox(info.lat, info.lon, info.ele)}${avalLinksHtml(info)}</div>
     <div class="sec row">
       <button class="btn small" type="button" data-act="peak-map" data-id="${esc(id)}">Ver en el mapa</button>
       ${climbs.length || nears.length ? `<button class="btn small" type="button" data-act="mfilter" data-id="${esc(id)}">Filtrar sus rutas</button>` : ''}
@@ -498,6 +509,7 @@ const UI = {
     this.body.addEventListener('click', (e) => this.onClick(e));
     $('#mapwrap').addEventListener('click', (e) => { if (e.target.closest('[data-act]')) this.onClick(e); });
     this.body.addEventListener('change', (e) => this.onChange(e));
+    this.body.addEventListener('toggle', (e) => { const k = e.target.dataset && e.target.dataset.fold; if (k) (S.ui.alpOpen = S.ui.alpOpen || {})[k] = e.target.open; }, true);
     this.body.addEventListener('input', (e) => this.onInput(e));
     this.body.addEventListener('keydown', (e) => {
       if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('li[data-act]')) { e.preventDefault(); this.onClick(e); }
@@ -508,6 +520,7 @@ const UI = {
     $('#btn3d').addEventListener('click', () => MapCtl.toggle3D());
     $('#btnFit').addEventListener('click', () => MapCtl.fitVisible(true));
     $('#btnTrails').addEventListener('click', () => MapCtl.toggleTrails());
+    $('#btnTerr').addEventListener('click', () => MapCtl.cycleTerrain());
     $('#btnPois').addEventListener('click', () => Pois.toggle());
     MapCtl.on('poi', ({ props, lngLat }) => MapCtl.popup(lngLat, poiPopup(props)));
     $('#btnOffline').addEventListener('click', () => this.openOffline());
@@ -576,17 +589,21 @@ const UI = {
     const v = S.ui.view;
     const tabR = v === 'retos' || v === 'reto' || v === 'plan' || ((v === 'route' || v === 'peak') && (S.ui.prev === 'reto' || S.ui.prev === 'retos'));
     const tabM = !tabR && (v === 'mountains' || v === 'peak' || (v === 'route' && S.ui.prev === 'mountains'));
-    $('#tabRoutes').setAttribute('aria-selected', String(!tabM && !tabR));
+    const tabS = v === 'stats';
+    $('#tabStats').setAttribute('aria-selected', String(tabS));
+    $('#tabRoutes').setAttribute('aria-selected', String(!tabM && !tabR && !tabS));
     $('#tabPeaks').setAttribute('aria-selected', String(tabM));
     $('#tabRetos').setAttribute('aria-selected', String(tabR));
     this.updateCounts();
     if (v === 'routes') { this.body.innerHTML = routesView(); this.refreshList(); }
     else if (v === 'mountains') { this.body.innerHTML = mountainsView(); this.renderMountainList(); }
     else if (v === 'route') { this.body.innerHTML = routeDetail(S.ui.routeId); drawProfile($('#prof'), S.routes.get(S.ui.routeId)); }
-    else if (v === 'peak') this.body.innerHTML = peakDetail(S.ui.peakId);
+    else if (v === 'peak') { this.body.innerHTML = peakDetail(S.ui.peakId); wxAuto(); }
     else if (v === 'retos') this.body.innerHTML = retosView();
     else if (v === 'reto') this.body.innerHTML = retoDetail(S.ui.retoId);
     else if (v === 'plan') this.body.innerHTML = Planner.view();
+    else if (v === 'stats') this.body.innerHTML = statsView();
+    if (v === 'route') { wxAuto(); }
   },
 
   refreshList() {
@@ -633,7 +650,7 @@ const UI = {
   go(view) {
     this.saveScroll();
     if (S.ui.placing) this.stopPlacing(false);
-    S.ui.view = view === 'mountains' || view === 'retos' ? view : 'routes';
+    S.ui.view = view === 'mountains' || view === 'retos' || view === 'stats' ? view : 'routes';
     MapCtl.showReto(null);
     Planner.clear();
     S.ui.selRoute = null;
@@ -646,8 +663,8 @@ const UI = {
   openRoute(id, fit = true) {
     if (!S.routes.has(id)) return;
     this.saveScroll();
-    if (['routes', 'mountains', 'retos', 'reto'].includes(S.ui.view)) S.ui.prev = S.ui.view;
-    Object.assign(S.ui, { view: 'route', routeId: id, selRoute: id, addPeakOpen: false, newPeak: null, showDiscarded: false, addPeakQ: '' });
+    if (['routes', 'mountains', 'retos', 'reto', 'stats'].includes(S.ui.view)) S.ui.prev = S.ui.view;
+    Object.assign(S.ui, { view: 'route', routeId: id, selRoute: id, profAt: null, alpOpen: {}, addPeakOpen: false, newPeak: null, showDiscarded: false, addPeakQ: '' });
     MapCtl.closePopup();
     this.render();
     this.body.scrollTop = 0;
@@ -658,7 +675,7 @@ const UI = {
 
   openPeak(id) {
     this.saveScroll();
-    if (['routes', 'mountains', 'retos', 'reto'].includes(S.ui.view)) S.ui.prev = S.ui.view;
+    if (['routes', 'mountains', 'retos', 'reto', 'stats'].includes(S.ui.view)) S.ui.prev = S.ui.view;
     Object.assign(S.ui, { view: 'peak', peakId: id });
     MapCtl.closePopup();
     this.render();
@@ -674,6 +691,14 @@ const UI = {
     if (el.tagName === 'BUTTON' && el.closest('li[data-act]') && act !== el.closest('li[data-act]').dataset.act) e.stopPropagation();
     switch (act) {
       case 'open-route': return this.openRoute(id, true);
+      case 'export-gpx': return exportRouteGpx(S.ui.routeId);
+      case 'alp-gear': el.setAttribute('aria-pressed', String(Actions.toggleGear(S.ui.routeId, id))); return;
+      case 'alp-partner': { const cur = alpOf(S.routes.get(S.ui.routeId)).team || []; if (!cur.includes(id)) { Actions.setAlp(S.ui.routeId, 'team', [...cur, id].join(', ')); this.render(); } return; }
+      case 'wp-add': if (S.ui.profAt != null) { Actions.addWp(S.ui.routeId, S.ui.profAt, $('#wpKind').value, $('#wpName').value); this.rerenderRoute(); } return;
+      case 'wp-del': Actions.removeWp(S.ui.routeId, +id); this.rerenderRoute(); return;
+      case 'stats-year': S.ui.filters = { year: id, type: '', sierra: '', peak: '', q: '' }; this.go('routes'); MapCtl.syncVisible(); MapCtl.fitVisible(true); return;
+      case 'terrain-run': return Terrain.run(S.ui.routeId);
+      case 'wx-load': return Wx.load(el.closest('[data-wx]'), true);
       case 'open-peak': return this.openPeak(id);
       case 'open-reto': return this.openReto(id);
       case 'plan-reto': return Planner.open(S.ui.retoId);
@@ -749,6 +774,8 @@ const UI = {
   },
 
   afterPeakChange() { this.render(); MapCtl.syncVisible(); },
+  /** Vuelve a pintar la ficha de ruta sin perder la posición ni los desplegables abiertos. */
+  rerenderRoute() { const y = this.body.scrollTop; this.render(); this.body.scrollTop = y; },
 
   onChange(e) {
     const t = e.target;
@@ -762,6 +789,14 @@ const UI = {
       S.ui.filters[t.dataset.f] = t.value;
       this.refreshList(); MapCtl.syncVisible();
       if (t.dataset.f !== 'q') MapCtl.fitVisible(true);
+      return;
+    }
+    if (t.dataset.alp) {
+      const p = t.dataset.alp;
+      Actions.setAlp(S.ui.routeId, p, t.value);
+      if (p.startsWith('plan.')) { const y = this.body.scrollTop; $('#schedBox').innerHTML = scheduleSection(S.routes.get(S.ui.routeId)); this.body.scrollTop = y; }
+      else if (t.tagName === 'SELECT' || p === 'team') this.rerenderRoute();
+      if (p === 'status') { this.updateCounts(); MapCtl.syncVisible(); }
       return;
     }
     if (t.dataset.edit) {
@@ -871,12 +906,12 @@ const UI = {
     });
   },
   async addFiles(files) {
-    const gpx = files.filter((f) => RouteSources.gpx.accepts(f));
+    const gpx = files.filter((f) => RouteSources.gpx.accepts(f) || RouteSources.fit.accepts(f));
     const json = files.filter((f) => /\.json$/i.test(f.name));
     if (!gpx.length && json.length) return this.importFile(json[0]);
-    if (!gpx.length) return this.toast('Solo se admiten archivos .gpx (o una exportación .json del cuaderno).', { err: true });
+    if (!gpx.length) return this.toast('Se admiten archivos .gpx y .fit (o una exportación .json del cuaderno).', { err: true });
     if (!S.loaded) return this.toast('Espera a que termine de cargar el cuaderno.', { err: true });
-    this.progress(0, gpx.length, 'Leyendo GPX');
+    this.progress(0, gpx.length, 'Leyendo tracks');
     let res;
     try { res = await importGpxFiles(gpx); }
     finally { this.progressDone(); }

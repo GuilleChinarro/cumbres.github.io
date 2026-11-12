@@ -20,7 +20,7 @@
       <span class="where" id="where"></span>
     </div>
     <div class="bar-actions">
-      <button class="btn primary" id="btnAdd" type="button"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span class="lbl">Añadir GPX</span></button>
+      <button class="btn primary" id="btnAdd" type="button"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span class="lbl">Añadir ruta</span></button>
       <button class="btn" id="btnData" type="button" aria-label="Datos: exportar e importar"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v8.5M4.5 6.8 8 10.3l3.5-3.5M2 11v3h12v-3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg><span class="lbl">Datos</span></button>
       <button class="btn icon" id="btnSettings" type="button" aria-label="Ajustes"><svg width="17" height="17" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 6.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm7.2 4.6-.1-2.4-2-.5-.6-1.4 1-1.8-1.7-1.7-1.8 1-1.4-.6-.5-2H7.6l-.5 2-1.4.6-1.8-1-1.7 1.7 1 1.8-.6 1.4-2 .5v2.4l2 .5.6 1.4-1 1.8 1.7 1.7 1.8-1 1.4.6.5 2h2.4l.5-2 1.4-.6 1.8 1 1.7-1.7-1-1.8.6-1.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
     </div>
@@ -31,6 +31,7 @@
         <button class="tab" role="tab" id="tabRoutes" data-view="routes" aria-selected="true" type="button">Rutas<span class="n" id="nRoutes"></span></button>
         <button class="tab" role="tab" id="tabPeaks" data-view="mountains" aria-selected="false" type="button">Montañas<span class="n" id="nPeaks"></span></button>
         <button class="tab" role="tab" id="tabRetos" data-view="retos" aria-selected="false" type="button">Retos</button>
+        <button class="tab" role="tab" id="tabStats" data-view="stats" aria-selected="false" type="button">Resumen</button>
       </nav>
       <div class="panel-body" id="panelBody"><div class="loading">Preparando el cuaderno y las 52.698 cumbres de OpenStreetMap…</div></div>
     </aside>
@@ -47,6 +48,7 @@
           <button type="button" data-bm="osm" aria-pressed="false" disabled>OSM</button>
           <button type="button" data-bm="ign-topo" aria-pressed="false" disabled>IGN topo</button>
           <button type="button" data-bm="ign-orto" aria-pressed="false" disabled>Ortofoto</button>
+          <button type="button" data-bm="opentopo" aria-pressed="false" disabled title="OpenTopoMap: topográfico de todo el mundo">OpenTopo</button>
         </div>
         <div class="row">
           <button class="mapbtn" id="btnFit" type="button" disabled>Encuadrar</button>
@@ -55,6 +57,7 @@
         <div class="row">
           <button class="mapbtn" id="btnPois" type="button" hidden aria-pressed="true" title="Lagunas, refugios, fuentes, collados y cascadas de OpenStreetMap">Lugares</button>
           <button class="mapbtn" id="btnTrails" type="button" hidden aria-pressed="false" title="Senderos señalizados (GR, PR, SL) de OpenStreetMap">Senderos</button>
+          <button class="mapbtn" id="btnTerr" type="button" hidden aria-pressed="false" title="Pendientes de más de 30° (terreno de aludes) y orientación de las laderas, calculadas con el relieve">Pendientes</button>
           <button class="mapbtn" id="btnOffline" type="button" hidden title="Guardar mapas para usarlos sin cobertura">Sin conexión</button>
         </div>
         <div class="seg" id="rot3d" role="group" aria-label="Controles del 3D" hidden>
@@ -77,6 +80,7 @@
         <span><svg class="vtx" width="14" height="14" viewBox="0 0 16 16"><path class="t" d="M8 1.6 15 14.2H1z"/><circle class="d" cx="8" cy="10" r="1.7"/></svg>Subí</span>
         <span><svg class="vtx near" width="13" height="13" viewBox="0 0 16 16"><path class="t" d="M8 1.6 15 14.2H1z"/><circle class="d" cx="8" cy="10" r="1.7"/></svg>Pasé cerca</span>
       </div>
+      <div class="legend terr-legend" id="terrLegend" hidden></div>
       <div class="map-note" id="mapNote" hidden></div>
     </section>
   </main>
@@ -86,7 +90,7 @@
   </nav>
 </div>
 
-<div class="drop" id="drop" hidden><div>Suelta los archivos GPX<small>Se añaden a tu cuaderno; las rutas repetidas se omiten.</small></div></div>
+<div class="drop" id="drop" hidden><div>Suelta los archivos GPX o FIT<small>Se añaden a tu cuaderno; las rutas repetidas se omiten.</small></div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <dialog id="dlgData" aria-labelledby="dlgDataT">
@@ -181,22 +185,26 @@
   </div>
 </dialog>
 
-<input type="file" id="inGpx" accept=".gpx,application/gpx+xml" multiple hidden>
+<input type="file" id="inGpx" accept=".gpx,.fit,application/gpx+xml" multiple hidden>
 <input type="file" id="inJson" accept=".json,application/json" hidden>
 <script src="js/core.js"></script>
 <script src="js/refdata.js"></script>
 <script src="js/gpx.js"></script>
+<script src="js/fit.js"></script>
 <script src="js/track.js"></script>
 <script src="js/detect.js"></script>
 <script src="js/ingest.js"></script>
 <script src="js/store.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/alp.js"></script>
 <script src="js/retos.js"></script>
 <script src="js/map.js"></script>
 <script src="js/offline.js"></script>
 <script src="js/pois.js"></script>
 <script src="js/planner.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/wx.js"></script>
 <script src="js/boot.js"></script>
 </body>
 </html>

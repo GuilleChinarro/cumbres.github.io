@@ -744,3 +744,59 @@ textarea { width: 100%; min-height: 160px; border: 1px solid var(--rule-2); bord
   .map-note { top: auto; bottom: 56px; max-width: calc(100% - 24px); }
 }
 .demo-note { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; background: var(--forest); color: var(--ink); padding: 8px 10px; border-radius: 4px; font-size: 13.5px; }
+
+/* ===== Alpinismo, horario, terreno, meteo y resumen ===== */
+details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(-45deg); transition: transform 0.15s; flex: none; margin-right: 2px; }
+details.fold[open] > summary::before { transform: rotate(45deg); }
+details.fold > summary h3 { margin: 0; flex-wrap: wrap; }
+details.fold { border-top: 1px solid var(--rule); }
+details.fold:not([open]) { padding-bottom: 6px; }
+details.fold[open] { padding-bottom: 14px; }
+.field.full, .grid2 .full { grid-column: 1 / -1; }
+.grid2.four { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 520px) { .grid2.four { grid-template-columns: 1fr 1fr; } }
+.field textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--rule-2); border-radius: 4px; padding: 7px 9px; resize: vertical; min-height: 44px; width: 100%; box-sizing: border-box; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px 6px; align-items: center; }
+.chip.tog { cursor: pointer; border: 1px solid var(--rule-2); background: transparent; color: var(--ink-2); font: inherit; font-size: 13.5px; padding: 4px 10px; border-radius: 14px; }
+.chip.tog[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip.plan { background: var(--water-soft); color: var(--water); }
+.chip.retreat { background: rgba(196, 138, 0, 0.16); color: var(--near); }
+.grade { display: inline-block; font-size: 12.5px; font-weight: 650; font-stretch: 85%; letter-spacing: 0.01em; color: var(--summit); border: 1px solid currentColor; border-radius: 3px; padding: 0 5px; line-height: 1.5; white-space: nowrap; }
+.r-via { margin-top: 3px; }
+table.sched { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+table.sched th { text-align: left; font-weight: 500; font-size: 12.5px; color: var(--ink-3); font-stretch: var(--narrow); padding: 3px 6px 5px 0; border-bottom: 1px solid var(--rule-2); vertical-align: bottom; }
+table.sched td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.sched .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-right: 0; padding-left: 8px; }
+table.sched tr.late td { color: var(--summit); }
+table.sched tr.retirada td:first-child, table.sched tr.limite td:first-child { font-weight: 650; }
+table.sched tr.start td, table.sched tr.end td { color: var(--ink-2); }
+table.sched .x { text-decoration: none; color: var(--ink-3); padding: 0 4px; }
+table.sched .warm { color: var(--summit); }
+table.sched .reto-bar { margin-top: 4px; height: 4px; }
+.warn { color: var(--summit); }
+.wpadd .row { gap: 6px; flex-wrap: wrap; }
+.wpadd select, .wpadd input { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--rule-2); border-radius: 4px; height: 30px; padding: 0 8px; min-width: 0; flex: 1 1 120px; }
+.profile .wpm path { fill: var(--water); stroke: var(--panel); stroke-width: 1.2; }
+.profile .wpm.retirada path, .profile .wpm.limite path, .profile .wpm.peligro path { fill: var(--summit); }
+.profile .steep { fill: var(--summit); }
+.terr { display: flex; gap: 14px; align-items: center; }
+.terr-bars { flex: 1; display: grid; gap: 5px; font-size: 13px; }
+.terr-bars > div { display: grid; grid-template-columns: 52px 1fr 62px; gap: 8px; align-items: center; }
+.terr-bars .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.terr-bars .reto-bar { height: 8px; }
+.rose { flex: none; }
+.rose .ring { fill: none; stroke: var(--rule-2); stroke-width: 1; }
+.rose text { font-size: 10px; fill: var(--ink-2); }
+.terr-legend { bottom: 52px; flex-wrap: wrap; gap: 5px 10px; max-width: 270px; }
+.terr-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; opacity: 0.85; }
+.months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 96px; align-items: end; }
+.months > div { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
+.months i { display: block; width: 100%; background: var(--contour); border-radius: 2px 2px 0 0; min-height: 1px; opacity: 0.85; }
+.months span { font-size: 11px; color: var(--ink-3); }
+.recs { list-style: none; margin: 0; padding: 0; }
+.recs li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14.5px; }
+.recs .k { color: var(--ink-2); flex: none; }
+.recs li > :last-child { text-align: right; }
+.wx a { color: inherit; }

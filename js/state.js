@@ -128,6 +128,7 @@ function mountains() {
   if (S.cache.mountains) return S.cache.mountains;
   const M = new Map();
   for (const r of S.routes.values()) {
+    if (isPlan(r)) continue; // los proyectos no cuentan como cumbres hechas
     for (const pe of r.peaks) {
       const st = statusOf(r, pe);
       if (st === 'none') continue;
@@ -156,7 +157,7 @@ function routeMatches(r, f, skip = '') {
     const st = statusOf(r, pe);
     if (!(st === 'climbed' || (S.ui.includeNear && st === 'near'))) return false;
   }
-  if (f.q && !norm(r.name).includes(norm(f.q))) return false;
+  if (f.q && !norm(r.name + ' ' + (alpOf(r).via || '') + ' ' + (alpOf(r).team || []).join(' ')).includes(norm(f.q))) return false;
   return true;
 }
 function filteredRoutes() { return routesSorted().filter((r) => routeMatches(r, S.ui.filters)); }
@@ -333,6 +334,9 @@ function sanitizeRoute(o) {
     decisions: {}, created: o.created || new Date().toISOString(),
   };
   if (o.updated && isFinite(Date.parse(o.updated))) r.updated = new Date(o.updated).toISOString();
+  if (o.status === 'plan') r.status = 'plan';
+  const alp = sanitizeAlp(o.alp);
+  if (alp) r.alp = alp;
   if (o.decisions && typeof o.decisions === 'object') for (const [k, v] of Object.entries(o.decisions)) if (['climbed', 'near', 'none'].includes(v)) r.decisions[k] = v;
   const P = decodeTrack(r.trk);
   if (!r.bbox) { let w = 180, s = 90, e = -180, n = -90; for (let i = 0; i < P.n; i++) { w = Math.min(w, P.lon[i]); e = Math.max(e, P.lon[i]); s = Math.min(s, P.lat[i]); n = Math.max(n, P.lat[i]); } r.bbox = [w, s, e, n]; }

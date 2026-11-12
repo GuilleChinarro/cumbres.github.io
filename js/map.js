@@ -8,6 +8,7 @@ const TILES = {
   osm: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19, attr: '© colaboradores de OpenStreetMap' },
   'ign-topo': { url: WMTS('mapa-raster', 'MTN'), max: 17, attr: 'Mapa topográfico © IGN España' },
   'ign-orto': { url: WMTS('pnoa-ma', 'OI.OrthoimageCoverage'), max: 19, attr: 'PNOA © IGN España' },
+  opentopo: { url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png', max: 17, attr: 'Mapa: © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), datos © colaboradores de OpenStreetMap, SRTM' },
 };
 /* Relieve para el 3D: Mapterhorn (MDT02 del IGN, 2 m en toda España) y, de respaldo, Terrain Tiles de AWS (~30 m). */
 const OVERLAYS = {
@@ -174,8 +175,9 @@ function mapPeaks(routes) {
   const out = new Map();
   for (const r of routes) {
     for (const pe of r.peaks) {
-      const st = statusOf(r, pe);
+      let st = statusOf(r, pe);
       if (st === 'none') continue;
+      if (isPlan(r)) st = 'near';
       const cur = out.get(pe.id);
       if (cur && (cur.st === 'climbed' || st === 'near')) continue;
       const m = M.get(pe.id);
@@ -284,7 +286,7 @@ class MLView {
   }
   async init() {
     const ml = window.maplibregl;
-    if (!MLView.proto) { ml.addProtocol('ccglyphs', glyphLoader); MLView.proto = true; }
+    if (!MLView.proto) { ml.addProtocol('ccglyphs', glyphLoader); ml.addProtocol('ccterr', terrainTile); MLView.proto = true; }
     this.map = new ml.Map({
       container: this.el, style: this.style(), center: [-3.7, 40.2], zoom: 5, minZoom: 2.5, maxZoom: 18.5, maxPitch: 78,
       attributionControl: false, fadeDuration: 150,
@@ -571,6 +573,16 @@ class MLView {
     }
     if (m.getLayer('r-senderos')) m.setLayoutProperty('r-senderos', 'visibility', on ? 'visible' : 'none');
   }
+  /** Capa de pendientes u orientaciones calculada en el navegador a partir del relieve (ver terrain.js). */
+  setTerrainOverlay(mode) {
+    const m = this.map;
+    if (m.getLayer('terr')) m.removeLayer('terr');
+    if (m.getSource('terr')) m.removeSource('terr');
+    if (!mode) return;
+    const d = DEMS[Net.dem === 'aws' ? 'aws' : 'mapterhorn'];
+    m.addSource('terr', { type: 'raster', tiles: [`ccterr://${mode}/{z}/{x}/{y}`], tileSize: d.tileSize, minzoom: 9, maxzoom: Math.min(14, d.maxzoom), attribution: d.attr });
+    m.addLayer({ id: 'terr', type: 'raster', source: 'terr', minzoom: 9, paint: { 'raster-opacity': mode === 'slope' ? 0.6 : 0.5, 'raster-fade-duration': 100 } }, 'sierra-hl');
+  }
   setReto(items) {
     const m = this.map, C = mapColors(isDark());
     const fc = { type: 'FeatureCollection', features: (items || []).map((it) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [it.lon, it.lat] },
@@ -700,6 +712,7 @@ const MapCtl = {
     this.netDone = true;
     this.updateControls();
     if (this.view && this.trails && Net.trails) this.view.setTrails(true);
+    if (this.view && this.terrMode && Net.dem) this.view.setTerrainOverlay(this.terrMode);
     if (this.view && !this._mvBound) { this._mvBound = true; this.view.map.on('moveend', () => this.onMove()); }
     this.onMove();
     if (this.view && !this.userBasemap) {
@@ -716,6 +729,15 @@ const MapCtl = {
     if (this.view) this.view.setTrails(this.trails && !!Net.trails);
     this.updateControls();
   },
+  terrMode: (() => { try { const v = localStorage.getItem('cc-terreno'); return v === 'slope' || v === 'aspect' ? v : ''; } catch { return ''; } })(),
+  /** Capa de terreno: nada → pendientes → orientaciones → nada. */
+  cycleTerrain() {
+    this.terrMode = this.terrMode === '' ? 'slope' : this.terrMode === 'slope' ? 'aspect' : '';
+    try { localStorage.setItem('cc-terreno', this.terrMode); } catch {}
+    if (this.view) this.view.setTerrainOverlay(Net.dem ? this.terrMode : '');
+    this.updateControls();
+    if (this.terrMode && this.view && this.view.map.getZoom() < 9) UI.toast('Acerca el mapa para ver la capa de terreno.');
+  },
   showReto(items, fit = false) {
     this.retoItems = items || null;
     if (!this.view) return;
@@ -729,6 +751,15 @@ const MapCtl = {
   updateControls() {
     const bt = $('#btnTrails');
     if (bt) { bt.hidden = !(this.view && Net.trails); bt.setAttribute('aria-pressed', String(!!this.trails)); }
+    const bs = $('#btnTerr');
+    if (bs) {
+      bs.hidden = !(this.view && Net.dem);
+      bs.setAttribute('aria-pressed', String(!!this.terrMode));
+      bs.textContent = this.terrMode === 'aspect' ? 'Orientaciones' : 'Pendientes';
+      const lg = $('#terrLegend');
+      lg.innerHTML = Net.dem ? terrainLegend(this.terrMode) : '';
+      lg.hidden = !(this.terrMode && Net.dem);
+    }
     const bo = $('#btnOffline');
     if (bo) bo.hidden = !(this.view && Offline.available());
     const bp = $('#btnPois');

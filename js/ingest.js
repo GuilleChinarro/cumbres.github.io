@@ -21,6 +21,12 @@ const RouteSources = {
     accepts: (file) => /\.gpx$/i.test(file.name) || file.type === 'application/gpx+xml',
     async read(file) { return parseGpx(await file.text(), file.name); },
   },
+  fit: {
+    id: 'fit',
+    label: 'Archivos FIT (Garmin)',
+    accepts: (file) => /\.fit$/i.test(file.name),
+    async read(file) { return parseFit(await file.arrayBuffer(), file.name); },
+  },
 };
 
 function findDuplicate(fp, externalId, extraFps = []) {
@@ -62,6 +68,7 @@ async function ingestRoutes(items, { onProgress } = {}) {
         date: startMs != null ? new Date(startMs).toISOString() : null,
         type: TYPE_LABEL[it.type] ? it.type : mapType(it.type, it.name),
         source: { kind: it.source?.kind || 'gpx', file: it.source?.file || null, externalId: it.source?.externalId || null },
+        ...(it.status === 'plan' ? { status: 'plan' } : {}),
         fp, stats, bbox: [w, s, e, n].map((v) => Math.round(v * 1e5) / 1e5), trk, peaks, decisions: {},
         created: new Date().toISOString(),
       };
@@ -85,7 +92,7 @@ async function ingestRoutes(items, { onProgress } = {}) {
 async function importGpxFiles(files) {
   const items = [], errors = [];
   for (const f of files) {
-    try { items.push(...(await RouteSources.gpx.read(f))); }
+    try { items.push(...(await (RouteSources.fit.accepts(f) ? RouteSources.fit : RouteSources.gpx).read(f))); }
     catch (e) { errors.push({ name: f.name, msg: e.message }); }
   }
   const res = items.length ? await ingestRoutes(items, { onProgress: (a, b) => UI.progress(a, b) }) : { added: [], duplicates: [], errors: [] };

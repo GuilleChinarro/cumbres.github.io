@@ -1,6 +1,6 @@
 'use strict';
 /* ===================== 6. Almacenamiento ===================== */
-const ROUTE_FIELDS = ['id', 'v', 'name', 'date', 'type', 'source', 'fp', 'stats', 'bbox', 'trk', 'peaks', 'decisions', 'created', 'updated'];
+const ROUTE_FIELDS = ['id', 'v', 'name', 'date', 'type', 'source', 'fp', 'stats', 'bbox', 'trk', 'peaks', 'decisions', 'created', 'updated', 'status', 'alp'];
 function serializeRoute(r) {
   const o = {};
   for (const k of ROUTE_FIELDS) if (r[k] !== undefined) o[k] = r[k];
