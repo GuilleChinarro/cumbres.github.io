@@ -632,7 +632,7 @@ textarea { width: 100%; min-height: 160px; border: 1px solid var(--rule-2); bord
   .bar-actions .btn .lbl { display: none; }
   .bar-actions .btn.primary .lbl { display: inline; }
   .split { position: relative; }
-  .panel { position: absolute; inset: 0; width: auto; border-right: 0; z-index: 6; }
+  .panel { position: absolute; inset: 0; width: auto; border-right: 0; z-index: 10; } /* por encima del buscador y los controles del mapa */
   .mapwrap { position: absolute; inset: 0; }
   body[data-pane="map"] .panel { display: none; }
   .switcher {
@@ -789,7 +789,7 @@ table.sched .reto-bar { margin-top: 4px; height: 4px; }
 .rose { flex: none; }
 .rose .ring { fill: none; stroke: var(--rule-2); stroke-width: 1; }
 .rose text { font-size: 10px; fill: var(--ink-2); }
-.terr-legend { bottom: 52px; flex-wrap: wrap; gap: 5px 10px; max-width: 270px; }
+.terr-legend { bottom: 50px; left: 12px; flex-wrap: wrap; gap: 5px 10px; max-width: 270px; }
 .terr-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; opacity: 0.85; }
 .months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 96px; align-items: end; }
 .months > div { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
@@ -800,3 +800,10 @@ table.sched .reto-bar { margin-top: 4px; height: 4px; }
 .recs .k { color: var(--ink-2); flex: none; }
 .recs li > :last-child { text-align: right; }
 .wx a { color: inherit; }
+.ctl3d { position: absolute; right: 12px; top: 196px; z-index: 6; background: var(--overlay); box-shadow: var(--shadow); border-radius: 4px; padding: 8px 10px; display: grid; gap: 6px; width: 190px; font-size: 12.5px; font-stretch: 88%; }
+.ctl3d label { display: grid; gap: 2px; }
+.ctl3d span { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-2); }
+.ctl3d b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ctl3d input[type="range"] { width: 100%; margin: 0; accent-color: var(--summit); }
+@container (max-width: 780px) { .ctl3d { top: auto; bottom: 120px; right: 8px; width: 160px; } }
+.flybar .row { flex-wrap: wrap; }

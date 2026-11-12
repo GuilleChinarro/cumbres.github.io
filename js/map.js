@@ -18,7 +18,18 @@ const DEMS = {
   mapterhorn: { url: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp', tileSize: 512, maxzoom: 17, attr: 'Relieve: <a href="https://mapterhorn.com/attribution" target="_blank" rel="noopener">Mapterhorn</a> (MDT02 IGN, Copernicus)' },
   aws: { url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png', tileSize: 256, maxzoom: 15, attr: 'Relieve: Terrain Tiles (Mapzen, AWS)' },
 };
-const EXAGS = [1, 1.3, 1.6, 2];
+/** Posición del sol: azimut (° desde el norte) y altura (°) para un instante y un lugar. */
+function sunPosition(ms, lat, lon) {
+  const rad = Math.PI / 180, d = ms / 86400000 + 2440587.5 - 2451545;
+  const M = (357.5291 + 0.98560028 * d) * rad;
+  const C = 1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M);
+  const L = (M / rad + C + 180 + 102.9372) * rad, ob = 23.4397 * rad;
+  const dec = Math.asin(Math.sin(L) * Math.sin(ob)), ra = Math.atan2(Math.sin(L) * Math.cos(ob), Math.cos(L));
+  const H = (280.16 + 360.9856235 * d + lon) * rad - ra, phi = lat * rad;
+  const alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
+  const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+  return { az: (az / rad + 180 + 360) % 360, alt: alt / rad };
+}
 function tileUrlAt(tpl, lon, lat, z) {
   const n = 2 ** z, la = toRad(clamp(lat, -85, 85));
   const x = Math.floor(((lon + 180) / 360) * n), y = Math.floor(((1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2) * n);
@@ -263,6 +274,7 @@ class MLView {
       { id: 'tracks', type: 'line', source: 'tracks', filter: ['in', ['get', 'id'], ['literal', []]], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'c'], 'line-opacity': 1, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, ['case', hover, 3.2, 1.7], 10, ['case', hover, 5, 3], 15, ['case', hover, 8, 5.2]] } },
       { id: 'tracks-sel-casing', type: 'line', source: 'tracks', filter: ['==', ['get', 'id'], ''], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': C.ink, 'line-width': lw(6, 8.5, 13) } },
       { id: 'tracks-sel', type: 'line', source: 'tracks', filter: ['==', ['get', 'id'], ''], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'c'], 'line-width': lw(3.4, 5, 8) } },
+      { id: 'flytrail', type: 'line', source: 'flytrail', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': lw(2, 3, 4.5), 'line-opacity': 0.95 } },
       { id: 'walls', type: 'fill-extrusion', source: 'walls', layout: vis(false), paint: { 'fill-extrusion-color': ['get', 'c'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.88 } },
       { id: 'cursor', type: 'circle', source: 'cursor', paint: { 'circle-radius': 6, 'circle-color': C.cursor, 'circle-stroke-color': C.halo, 'circle-stroke-width': 2 } },
       { id: 'peak-sel', type: 'circle', source: 'peaksel', paint: { 'circle-radius': 16, 'circle-opacity': 0, 'circle-stroke-color': C.ink, 'circle-stroke-width': 2 } },
@@ -279,7 +291,7 @@ class MLView {
       places: gj(B.places), sierras: gj(Ref.sierraGeo, { maxzoom: 11 }), sierraPts: gj(Ref.sierraPts),
       allpeaks: gj(EMPTY_FC, { maxzoom: 13 }), tracks: gj(EMPTY_FC, { promoteId: 'id', maxzoom: 17, tolerance: 0.3 }),
       mypeaks: gj(EMPTY_FC), walls: gj(EMPTY_FC, { maxzoom: 15 }), cursor: gj(EMPTY_FC), peaksel: gj(EMPTY_FC),
-      sierrahl: gj(EMPTY_FC),
+      sierrahl: gj(EMPTY_FC), flytrail: gj(EMPTY_FC),
     };
     for (const [k, t] of Object.entries(TILES)) sources['r-' + k] = { type: 'raster', tiles: [t.url], tileSize: 256, maxzoom: t.max, attribution: t.attr };
     return { version: 8, glyphs: 'ccglyphs://{fontstack}/{range}', sources, layers: this.layers(mapColors(this.dark)) };
@@ -409,8 +421,28 @@ class MLView {
     const def = { type: 'raster-dem', tiles: [d.url], tileSize: d.tileSize, maxzoom: d.maxzoom, encoding: 'terrarium', attribution: d.attr };
     m.addSource('dem', def);
     m.addSource('demhs', { ...def });
-    m.addLayer({ id: 'hillshade', type: 'hillshade', source: 'demhs', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': mapColors(this.dark).hill } }, 'sierra-hl');
+    m.addLayer({ id: 'hillshade', type: 'hillshade', source: 'demhs', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': mapColors(this.dark).hill, 'hillshade-illumination-anchor': 'map' } }, 'sierra-hl');
     this.demKind = kind;
+    if (this.sunHour != null) this.setSun(this.sunHour);
+  }
+  /** Sombreado según la hora solar del día de hoy en el centro del mapa: dirección real del sol y sombras más largas con el sol bajo. */
+  setSun(hour) {
+    this.sunHour = hour;
+    const m = this.map;
+    if (!m.getLayer('hillshade')) return null;
+    if (hour == null) {
+      m.setPaintProperty('hillshade', 'hillshade-illumination-direction', 335);
+      m.setPaintProperty('hillshade', 'hillshade-exaggeration', 0.35);
+      return null;
+    }
+    const c = m.getCenter(), d = new Date();
+    d.setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0, 0);
+    // la hora del control es hora solar local: se corrige con la longitud para no depender del huso del dispositivo
+    const ms = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0) + (hour - c.lng / 15) * 3600000;
+    const p = sunPosition(ms, c.lat, c.lng);
+    m.setPaintProperty('hillshade', 'hillshade-illumination-direction', Math.round(p.az));
+    m.setPaintProperty('hillshade', 'hillshade-exaggeration', p.alt <= 0 ? 0.85 : clamp(0.9 - p.alt / 75, 0.3, 0.85));
+    return p;
   }
   setExag(v) { if (this.dem) { this.map.setTerrain({ source: 'dem', exaggeration: v }); this.applyMesh(); } }
   /** Densidad de la malla 3D: MapLibre usa 128 divisiones por tesela; en HD, 240 (con 2 m de datos, ~2 m por vértice a zoom 16). */
@@ -443,7 +475,7 @@ class MLView {
       const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + ahead)];
       return (Math.atan2((b[0] - a[0]) * Math.cos(toRad(a[1])), b[1] - a[1]) * 180) / Math.PI;
     };
-    const F = (this.fly = { r, pts, brg, total, scale: routeScale(r), dur: clamp(total * 7, 40000, 180000), elapsed: 0, speed: 1, paused: false, bearing: brg(0), last: 0, raf: 0 });
+    const F = (this.fly = { r, pts, brg, total, scale: routeScale(r), dur: clamp(total * 7, 40000, 180000), elapsed: 0, speed: 1, paused: false, bearing: brg(0), last: 0, raf: 0, mode: 'chase', tick: 0 });
     const el = document.createElement('div');
     el.className = 'fly-mk';
     el.style.setProperty('--c', r._color);
@@ -457,10 +489,19 @@ class MLView {
     const u = F.elapsed / F.dur, fk = u * (F.pts.length - 1), k = Math.min(F.pts.length - 1, Math.floor(fk)), f = fk - k;
     const a = F.pts[k], b = F.pts[Math.min(F.pts.length - 1, k + 1)];
     F.lon = a[0] + f * (b[0] - a[0]); F.lat = a[1] + f * (b[1] - a[1]); F.d = a[2] + f * (b[2] - a[2]);
-    const delta = ((F.brg(k) - F.bearing + 540) % 360) - 180;
-    F.bearing += dt == null ? delta : delta * Math.min(1, (dt * F.speed) / 1800);
+    if (F.mode === 'orbit') F.bearing += (dt == null ? 0 : dt) * 0.012;
+    else if (F.mode === 'chase') {
+      const delta = ((F.brg(k) - F.bearing + 540) % 360) - 180;
+      F.bearing += dt == null ? delta : delta * Math.min(1, (dt * F.speed) / 1800);
+    }
     this.map.jumpTo({ center: [F.lon, F.lat], bearing: F.bearing });
     F.mk.setLngLat([F.lon, F.lat]);
+    // estela: el tramo ya recorrido, en blanco sobre el track (cada pocos fotogramas para no cargar el móvil)
+    if (dt == null || F.tick++ % 5 === 0) {
+      const line = F.pts.slice(0, k + 1).map((q) => [q[0], q[1]]);
+      line.push([F.lon, F.lat]);
+      this.map.getSource('flytrail').setData(line.length > 1 ? { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } : EMPTY_FC);
+    }
     MapCtl.flyProgress(F);
   }
   flyRun(F) {
@@ -468,7 +509,7 @@ class MLView {
     F.last = performance.now();
     const frame = (t) => {
       if (this.fly !== F) return;
-      const dt = Math.min(100, t - F.last);
+      const dt = clamp(t - F.last, 0, 100); // el primer fotograma puede traer una marca anterior a F.last
       F.last = t;
       if (!F.paused) {
         F.elapsed = Math.min(F.dur, F.elapsed + dt * F.speed);
@@ -494,12 +535,22 @@ class MLView {
     this.flyApply(F, null);
     MapCtl.flyChanged();
   }
+  /** Cámara del vuelo: por detrás (seguir), girando alrededor del punto (órbita) o casi cenital con el norte arriba. */
+  flyMode(mode) {
+    const F = this.fly;
+    if (!F) return;
+    F.mode = mode;
+    if (mode === 'top') F.bearing = 0;
+    this.map.easeTo({ pitch: mode === 'top' ? 30 : mode === 'orbit' ? 60 : 68, bearing: F.bearing, duration: 700 });
+    MapCtl.flyChanged();
+  }
   stopFly() {
     const F = this.fly;
     if (!F) return;
     clearTimeout(F.wait);
     cancelAnimationFrame(F.raf);
     if (F.mk) F.mk.remove();
+    this.map.getSource('flytrail').setData(EMPTY_FC);
     this.fly = null;
     MapCtl.flyChanged();
   }
@@ -618,6 +669,13 @@ class MLView {
     this.three = on;
     this.dem = on && dem ? dem : false;
     if (!on) { this.stopOrbit(); this.stopFly(); }
+    try {
+      // cielo y bruma hacia el horizonte: dan profundidad y tapan el borde de las teselas lejanas
+      m.setSky(on ? { 'sky-color': this.dark ? '#0d1a2b' : '#8fbde6', 'horizon-color': this.dark ? '#24364a' : '#e6eef4', 'fog-color': this.dark ? '#1a2630' : '#eef2f1', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0 } : undefined);
+      // en móvil, el 3D a resolución completa de pantalla (×3) es lo que más frena: se limita a ×1,5
+      const dpr = window.devicePixelRatio || 1;
+      m.setPixelRatio(on && isMobile() ? Math.min(dpr, 1.5) : dpr);
+    } catch (e) { console.warn('cielo 3D:', e); }
     if (this.dem) {
       this.ensureDem(this.dem);
       m.setTerrain({ source: 'dem', exaggeration: MapCtl.exag });
@@ -669,7 +727,7 @@ function focusElement(f) {
   return el;
 }
 const MapCtl = {
-  view: null, kind: '', handlers: {}, basemap: 'esquema', userBasemap: false, is3D: false, focus: null, exag: 1.3,
+  view: null, kind: '', handlers: {}, basemap: 'esquema', userBasemap: false, is3D: false, focus: null, exag: (() => { try { return clamp(+localStorage.getItem('cc-exag') || 1.3, 1, 3); } catch { return 1.3; } })(),
   hd: (() => { try { return localStorage.getItem('cc-hd') === '1'; } catch { return false; } })(),
   why: '',
   readyP: null, netDone: false, noteOff: false,
@@ -775,9 +833,10 @@ const MapCtl = {
       r3.hidden = !(this.kind === 'maplibre' && this.is3D);
       const ob = r3.querySelector('[data-orbit]');
       ob.setAttribute('aria-pressed', String(!!(this.view && this.view.orbiting)));
-      const ex = r3.querySelector('[data-exag]');
-      ex.hidden = !(this.view && this.view.dem);
-      ex.textContent = '×' + String(this.exag).replace('.', ',');
+      const c3 = $('#ctl3d');
+      c3.hidden = !(this.kind === 'maplibre' && this.is3D && this.view && this.view.dem);
+      $('#exagR').value = this.exag;
+      $('#exagLbl').textContent = '×' + NF1.format(this.exag);
       const hd = r3.querySelector('[data-hd]');
       hd.hidden = !(this.view && this.view.dem && this.view.meshTunable !== false);
       hd.setAttribute('aria-pressed', String(this.hd));
@@ -903,6 +962,7 @@ const MapCtl = {
     if (cmd === 'pause') this.view.flyPause(F.ended ? false : !F.paused);
     else if (cmd === 'speed') { const sp = [1, 2, 4, 0.5]; F.speed = sp[(sp.indexOf(F.speed) + 1) % sp.length]; this.flyChanged(); }
     else if (cmd === 'stop') this.view.stopFly();
+    else if (cmd === 'mode') { const md = ['chase', 'orbit', 'top']; this.view.flyMode(md[(md.indexOf(F.mode) + 1) % md.length]); }
   },
   flySeek(u) { if (this.view && this.view.fly) this.view.flySeek(u); },
   flyChanged() {
@@ -912,18 +972,35 @@ const MapCtl = {
     bar.querySelector('.fb-name').textContent = F.r.name;
     bar.querySelector('[data-fly="pause"]').textContent = F.ended ? 'Repetir' : F.paused ? 'Seguir' : 'Pausa';
     bar.querySelector('[data-fly="speed"]').textContent = '×' + String(F.speed).replace('.', ',');
+    bar.querySelector('[data-fly="mode"]').textContent = F.mode === 'orbit' ? 'Cámara: órbita' : F.mode === 'top' ? 'Cámara: desde arriba' : 'Cámara: seguir';
   },
   flyProgress(F) {
     const bar = $('#flybar');
     bar.querySelector('.fb-prog i').style.width = ((100 * F.elapsed) / F.dur).toFixed(2) + '%';
     const ele = eleAt(F.r._P, F.d);
-    bar.querySelector('.fb-km').textContent = `km ${fmt.kmNum(F.d * F.scale)} de ${fmt.kmNum(F.total * F.scale)}${ele != null ? `, ${fmt.m(ele)}` : ''}`;
+    const P = F.r._P;
+    let extra = '';
+    if (ele != null) {
+      const e0 = eleAt(P, Math.max(0, F.d - 40)), e1 = eleAt(P, Math.min(F.total, F.d + 40)), run = Math.min(F.total, F.d + 40) - Math.max(0, F.d - 40);
+      if (run > 0) { const g = Math.round(((e1 - e0) / run) * 100); extra += `, ${g > 0 ? '+' : ''}${g} %`; }
+    }
+    if (P.t) extra += `, ${hhmm(P.t[idxAt(P, F.d)] * 1000)}`;
+    bar.querySelector('.fb-km').textContent = `km ${fmt.kmNum(F.d * F.scale)} de ${fmt.kmNum(F.total * F.scale)}${ele != null ? `, ${fmt.m(ele)}` : ''}${extra}`;
     UI.profileAt(F.r.id, F.d);
   },
-  cycleExag() {
-    this.exag = EXAGS[(EXAGS.indexOf(this.exag) + 1) % EXAGS.length];
+  setExag(v) {
+    this.exag = clamp(+v || 1, 1, 3);
+    try { localStorage.setItem('cc-exag', String(this.exag)); } catch {}
     if (this.kind === 'maplibre') this.view.setExag(this.exag);
     this.updateControls();
+  },
+  sunHour: null,
+  /** Hora solar para el sombreado; null = luz fija de mapa (noroeste). */
+  setSun(h) {
+    this.sunHour = h;
+    const p = this.view && this.kind === 'maplibre' ? this.view.setSun(h) : null;
+    const lb = $('#sunLbl');
+    if (lb) lb.textContent = h == null ? 'Luz de mapa' : `${String(Math.floor(h)).padStart(2, '0')}:${h % 1 ? '30' : '00'} solar${p ? (p.alt <= 0 ? ' · noche' : ` · sol al ${ASPECTS[Math.round(p.az / 45) % 8]}, ${Math.round(p.alt)}°`) : ''}`;
   },
   setCursor(lat, lon) { if (this.view) this.view.setCursor(lat == null ? null : lat, lon); },
   popup(ll, html) { if (this.view && html) this.view.popup(ll, html); },

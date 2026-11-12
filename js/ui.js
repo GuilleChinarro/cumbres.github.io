@@ -521,6 +521,8 @@ const UI = {
     $('#btnFit').addEventListener('click', () => MapCtl.fitVisible(true));
     $('#btnTrails').addEventListener('click', () => MapCtl.toggleTrails());
     $('#btnTerr').addEventListener('click', () => MapCtl.cycleTerrain());
+    $('#exagR').addEventListener('input', (e) => MapCtl.setExag(e.target.value));
+    $('#sunR').addEventListener('input', (e) => { const v = +e.target.value; MapCtl.setSun(v < 5 ? null : v); });
     $('#btnPois').addEventListener('click', () => Pois.toggle());
     MapCtl.on('poi', ({ props, lngLat }) => MapCtl.popup(lngLat, poiPopup(props)));
     $('#btnOffline').addEventListener('click', () => this.openOffline());
@@ -552,7 +554,6 @@ const UI = {
       if (b.dataset.rot) MapCtl.rotate(+b.dataset.rot);
       else if (b.dataset.tilt) MapCtl.tilt(+b.dataset.tilt);
       else if ('orbit' in b.dataset) MapCtl.orbit();
-      else if ('exag' in b.dataset) MapCtl.cycleExag();
       else if ('hd' in b.dataset) MapCtl.toggleHD();
     });
     $('#flybar').addEventListener('click', (e) => {

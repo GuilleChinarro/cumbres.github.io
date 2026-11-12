@@ -66,15 +66,18 @@
           <button type="button" data-tilt="10" title="Inclinar más" aria-label="Inclinar más"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 10.5 4.5-5 4.5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button type="button" data-tilt="-10" title="Inclinar menos" aria-label="Inclinar menos"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 5.5 4.5 5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button type="button" data-orbit aria-pressed="false" title="Girar sin parar alrededor del centro">Orbitar</button>
-          <button type="button" data-exag title="Exagerar el relieve" hidden>×1,3</button>
           <button type="button" data-hd aria-pressed="true" title="Máximo detalle del relieve (más carga para la tarjeta gráfica)" hidden>HD</button>
           <span class="demlbl" hidden></span>
         </div>
       </div>
+      <div class="ctl3d" id="ctl3d" hidden>
+        <label><span>Relieve <b id="exagLbl">×1,3</b></span><input type="range" id="exagR" min="1" max="3" step="0.1" value="1.3" aria-label="Exageración vertical del relieve"></label>
+        <label><span>Sombras <b id="sunLbl">Luz de mapa</b></span><input type="range" id="sunR" min="4.5" max="21" step="0.5" value="4.5" aria-label="Hora solar para el sombreado"></label>
+      </div>
       <div class="flybar" id="flybar" hidden>
         <div class="fb-top"><b class="fb-name"></b><span class="fb-km"></span></div>
         <div class="fb-prog" title="Ir a otro punto de la ruta"><i></i></div>
-        <div class="row"><button class="btn small primary" type="button" data-fly="pause">Pausa</button><button class="btn small" type="button" data-fly="speed" title="Velocidad">×1</button><button class="btn small" type="button" data-fly="stop">Salir</button></div>
+        <div class="row"><button class="btn small primary" type="button" data-fly="pause">Pausa</button><button class="btn small" type="button" data-fly="speed" title="Velocidad">×1</button><button class="btn small" type="button" data-fly="mode" title="Cambiar la cámara">Cámara: seguir</button><button class="btn small" type="button" data-fly="stop">Salir</button></div>
       </div>
       <div class="legend" aria-hidden="true">
         <span><svg class="vtx" width="14" height="14" viewBox="0 0 16 16"><path class="t" d="M8 1.6 15 14.2H1z"/><circle class="d" cx="8" cy="10" r="1.7"/></svg>Subí</span>
@@ -99,7 +102,7 @@
     <div class="dlg-b">
       <section>
         <h3>Exportar</h3>
-        <p>Descarga un archivo con todas tus rutas, cumbres y correcciones. Sirve de copia de seguridad y para pasarlo a otra versión del cuaderno.</p>
+        <p>Descarga un archivo con todas tus rutas, cumbres, fichas de ascensión y correcciones. Sirve de copia de seguridad y para pasarlo a otra versión del cuaderno.</p>
         <button class="btn primary" id="btnExport" type="button">Exportar datos</button>
       </section>
       <section>
@@ -166,7 +169,7 @@
       </section>
       <section>
         <h3>Fuentes</h3>
-        <p class="small">Cumbres: © colaboradores de OpenStreetMap (ODbL), todas las cimas con nombre de España y alrededores según la copia del 24 de septiembre de 2026 publicada por hungry-trails-data. Sierras: GMBA Mountain Inventory v2 (Snethlage et al., 2022, CC BY 4.0), versión simplificada. Mapa esquemático: Natural Earth. Mapa topográfico y ortofoto PNOA del IGN, OpenStreetMap y relieve 3D de Mapterhorn (MDT02 del IGN, 2 m; Copernicus fuera de España), con Terrain Tiles de AWS como respaldo. Mapas dibujados con MapLibre GL JS.</p>
+        <p class="small">Cumbres: © colaboradores de OpenStreetMap (ODbL), todas las cimas con nombre de España y alrededores (copia del 24 de septiembre de 2026 publicada por hungry-trails-data); fuera de esa zona, lugares y cumbres se consultan a OpenStreetMap con Overpass. Sierras: GMBA Mountain Inventory v2 (Snethlage et al., 2022, CC BY 4.0), simplificado. Mapa esquemático: Natural Earth (dominio público). Mapas: topográfico MTN y ortofoto PNOA © Instituto Geográfico Nacional de España (CC BY 4.0), OpenStreetMap y OpenTopoMap (CC BY-SA). Senderos: Waymarked Trails (CC BY-SA). Relieve 3D, pendientes y orientaciones: Mapterhorn (MDT02 del IGN, 2 m; Copernicus fuera de España), con Terrain Tiles de Mapzen/AWS como respaldo. Meteo: Open-Meteo (CC BY 4.0). Trazado por sendero del planificador: BRouter. Mapas dibujados con MapLibre GL JS (BSD-3).</p>
         <p class="small muted" id="diag"></p>
       </section>
     </div>
